@@ -50,22 +50,26 @@ const scenarios = [
 ];
 
 function startScenario(scenario) {
-  gameStore.scores = { ...scenario.scores };
-  gameStore.narration = scenario.narration;
-  gameStore.historiqueChoix = [...scenario.historiqueChoix];
-  gameStore.currentScene = 0;
-  gameStore.scenario = scenario.nom;
-  localStorage.setItem('gameState', JSON.stringify(gameStore.$state));
-  console.log("Scénario démarré :", scenario.nom, gameStore, {scores: {
-    ecoScore: gameStore.scores.ecoScore,
-    pollution: gameStore.scores.pollution,
-    urbanisation: gameStore.scores.urbanisation,
-    energie: gameStore.scores.energie
-  },
-narration: gameStore.narration,
-historiqueChoix: [...gameStore.historiqueChoix],
-currentScene: gameStore.currentScene,
-scenario: gameStore.scenario}, [...gameStore.historiqueChoix]);
+    gameStore.scores = { ...scenario.scores };
+    gameStore.narration = scenario.narration;
+    gameStore.historiqueChoix = [...scenario.historiqueChoix];
+    gameStore.currentScene = 0;
+    gameStore.scenario = scenario.nom;
+
+    const persistentStorage = {
+        scores: {
+            ecoScore: gameStore.scores.ecoScore,
+            pollution: gameStore.scores.pollution,
+            urbanisation: gameStore.scores.urbanisation,
+            energie: gameStore.scores.energie
+        },
+        narration: gameStore.narration,
+        historiqueChoix: [...gameStore.historiqueChoix],
+        currentScene: gameStore.currentScene,
+        scenario: gameStore.scenario
+    }
+
+  localStorage.setItem('gameState', JSON.stringify(persistentStorage));
   router.push('/game'); // Redirige vers la vue de jeu
   // On pourrait naviguer vers la vue de jeu principale ici
 }
