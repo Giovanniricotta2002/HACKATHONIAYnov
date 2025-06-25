@@ -1,6 +1,13 @@
 // src/services/openaiService.js
+// import dotenv from 'dotenv';
+// dotenv.config();
+import OpenAI from 'openai';
 
-const OPENAI_API_KEY = '<TA_CLE_API_ICI>';  // Remplace par ta clé
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // Assure-toi que .env est bien chargé
+  dangerouslyAllowBrowser: true,
+});
 
 export async function generateNarrationAndChoices(context: any, userChoice: any) {
   const prompt = `
@@ -24,36 +31,28 @@ Répond en JSON comme ceci :
     {"text": "Choix 2", "effects": {"ecoScore": -10, "pollution": 10}}
   ]
 }
-`;
+  `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: 300,
-        })
-    })
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 500,
+    });
 
-    if (response.ok) {
-        const data = await response.json();
-        const content = data.choices[0].message.content;
-        
-        try {
-          return JSON.parse(content);
-        } catch (e) {
-          console.error("Erreur parsing JSON OpenAI:", e, content);
-          throw new Error("Format de réponse invalide");
-        }
+    const content = completion.choices[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("Réponse vide de l'API OpenAI");
     }
 
-    // Tenter de parser JSON
+    try {
+      return JSON.parse(content);
+    } catch (parseErr) {
+      console.error("Erreur parsing JSON OpenAI:", parseErr, content);
+      throw new Error("Format de réponse invalide. Contenu brut : " + content);
+    }
 
   } catch (error) {
     console.error("Erreur OpenAI:", error);
@@ -61,29 +60,3 @@ Répond en JSON comme ceci :
   }
 }
 
-export async function generateBackgroundImage(prompt: any) {
-     const response = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            prompt,
-            n: 1,
-            size: "512x512"
-        })
-    })
-
-    if (response.ok) {
-        const data = await response.json();
-        const content = data.data[0].url;
-        
-        try {
-          return content;
-        } catch (e) {
-          console.error("Erreur parsing JSON OpenAI:", e, content);
-          throw new Error("Format de réponse invalide");
-        }
-    }
-}

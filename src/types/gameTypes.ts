@@ -44,4 +44,9 @@ interface ScoreEvaluationCriteria {
   highDescriptions: string[],
 }
 
-export type { Scores, Choice, GameState, Scenario, GameContext, NarrationResponse, ScoreEvaluationCriteria };
+interface Event {
+  narration: string
+  choices: Choice[]
+}
+
+export type { Scores, Choice, GameState, Scenario, GameContext, NarrationResponse, ScoreEvaluationCriteria, Event };

@@ -10,10 +10,11 @@ import { createRouter, createWebHistory } from 'vue-router/auto'
 import { setupLayouts } from 'virtual:generated-layouts'
 import ScenarioSelector from '@/layouts/ScenarioSelector.vue'
 import GamePlay from '@/layouts/GamePlay.vue'
+import Narrations from '@/layouts/NarrationGame.vue'
 
 const routes = [
   { path: '/', component: ScenarioSelector },
-  { path: '/game', name: 'Game', component: GamePlay },
+  { path: '/game', name: 'Game', component: Narrations },
 ]
 
 
