@@ -10,14 +10,15 @@ export async function generateNarrationAndChoices(context: any, userChoice: any)
 
     Génère la suite de l’histoire sous forme JSON avec narration et 2 à 3 choix :
     {
-    "narration": "Un orage toxique s'approche...",
-    "choices": [
-        {"text": "Activer les filtres d'air", "effects": {"pollution": -10}},
-        {"text": "Fermer les écoles", "effects": {"ecoScore": 5}}
-    ]
+        "narration": "Un orage toxique s'approche...",
+        "choices": [
+            {"text": "Activer les filtres d'air", "effects": {"pollution": -10}},
+            {"text": "Fermer les écoles", "effects": {"ecoScore": 5}}
+        ]
     }
     `
-
+    console.log(prompt);
+    
     const res = await fetch(`${BASE_URL}/api/generate`, {
         method: 'POST',
         headers: {

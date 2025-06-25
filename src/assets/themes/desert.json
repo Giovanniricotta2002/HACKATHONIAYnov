@@ -1,0 +1,8 @@
+{
+  "theme": "Désertification",
+  "ecoScore": 30,
+  "pollution": 10,
+  "urbanisation": 20,
+  "énergie": 40,
+  "intro": "Votre ville est en plein désert. Chaque décision peut changer la donne."
+}

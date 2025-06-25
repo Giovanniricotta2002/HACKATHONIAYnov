@@ -1,113 +1,104 @@
 <template>
   <v-container>
-    <v-card class="pa-4">
-      <h2 class="text-h5">{{ narration }}</h2>
+    <v-card class="pa-4" outlined>
+      <v-img :src="backgroundImage" height="300" class="mb-4" />
 
-      <v-row class="my-4" dense>
+      <div style="min-height: 120px;">
+        <p>{{ gameStore.narration }}</p>
+      </div>
+
+      <v-row>
         <v-col
-          v-for="(choice, index) in choices"
-          :key="index"
-          cols="12"
-          sm="6"
+          v-for="(choice, i) in currentChoices"
+          :key="i"
+          cols="12" md="6"
         >
-          <v-btn @click="handleChoice(choice)" block color="primary">
+          <v-btn
+            :loading="loading"
+            :disabled="loading || gameOver"
+            color="primary"
+            block
+            @click="makeChoice(choice)"
+          >
             {{ choice.text }}
           </v-btn>
         </v-col>
       </v-row>
 
-      <v-divider></v-divider>
+      <v-divider class="my-6"></v-divider>
 
-      <v-card class="mt-4 pa-2" color="grey lighten-4">
-        <h3 class="text-h6">Mini-Quizz</h3>
-        <p>{{ quiz.question }}</p>
-        <v-btn
-          v-for="(opt, i) in quiz.options"
-          :key="i"
-          @click="handleQuiz(opt)"
-          class="ma-1"
-          :color="opt === quiz.correct ? 'success' : 'info'"
-        >
-          {{ opt }}
-        </v-btn>
-      </v-card>
+      <v-row>
+        <v-col cols="12" md="6" v-for="(val, key) in gameStore.scores" :key="key">
+          <div>{{ key }} : {{ val }}</div>
+          <v-progress-linear :value="val" height="15" color="green"></v-progress-linear>
+        </v-col>
+      </v-row>
 
-      <v-divider class="my-4"></v-divider>
-
-      <h3 class="text-h6 mb-2">Historique des Scores</h3>
-      <!-- <line-chart :chart-data="chartData" /> -->
+      <v-alert
+        v-if="gameOver"
+        type="success"
+        class="mt-6"
+      >
+        {{ gameOverMessage }}
+      </v-alert>
     </v-card>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { generateNarrationAndChoices } from '@/services/ollamaService'
-import { generateQuiz } from '@/services/quizService'
-import LineChart from './LineChart.vue'
+import { ref } from 'vue';
+import { generateNarrationAndChoices, generateBackgroundImage } from '../services/openaiService';
+import { gameStore } from '@/stores/gameStore';
 
-const narration = ref("Bienvenue dans votre aventure écologique !")
-const choices = ref([])
-const quiz = ref({ question: '', options: [], correct: '' })
-const scoresHistory = ref([{ ecoScore: 50, pollution: 20, urbanisation: 40, énergie: 50 }])
+const loading = ref(false);
+const currentChoices = ref([{ text: "Commencer le jeu", effects: {} }]);
+const backgroundImage = ref('');
+const gameOver = ref(false);
+const gameOverMessage = ref("");
 
-const currentStats = ref({
-  ecoScore: 50,
-  pollution: 20,
-  urbanisation: 40,
-  énergie: 50
-})
+async function makeChoice(choice) {
+  if (loading.value || gameOver.value) return;
+  loading.value = true;
 
-async function nextEvent(userChoice) {
-  const res = await generateNarrationAndChoices({
-    scores: currentStats.value,
-    historique: [],
-    theme: 'désert'
-  }, userChoice.text)
-  narration.value = res.narration
-  choices.value = res.choices
-  applyEffects(userChoice.effects)
-  quiz.value = await generateQuiz(currentStats.value)
-}
-
-function applyEffects(effects) {
-  for (const key in effects) {
-    currentStats.value[key] += effects[key]
+  // Appliquer effets au score
+  for (const [k, v] of Object.entries(choice.effects)) {
+    gameStore.scores[k] = Math.min(100, Math.max(0, gameStore.scores[k] + v));
   }
-  scoresHistory.value.push({ ...currentStats.value })
-}
+  gameStore.historiqueChoix.push(choice.text);
 
-function handleChoice(choice) {
-  nextEvent(choice)
-}
+  // Vérifier fin de partie
+  if (Object.values(gameStore.scores).every(s => s >= 90)) {
+    gameOverMessage.value = "🎉 Bravo, vous avez sauvé la planète !";
+    gameOver.value = true;
+    loading.value = false;
+    return;
+  }
+  if (Object.values(gameStore.scores).some(s => s <= 10)) {
+    gameOverMessage.value = "⚠️ Votre gestion a mené à une catastrophe écologique...";
+    gameOver.value = true;
+    loading.value = false;
+    return;
+  }
 
-function handleQuiz(option) {
-  // Optionnel : réaction à la réponse
-}
+  try {
+    // Générer narration & choix par GPT
+    const data = await generateNarrationAndChoices({
+      scores: gameStore.scores,
+      historique: gameStore.historiqueChoix,
+    }, choice.text);
 
-const chartData = computed(() => ({
-  labels: scoresHistory.value.map((_, i) => `Tour ${i + 1}`),
-  datasets: [
-    {
-      label: 'ÉcoScore',
-      borderColor: '#4caf50',
-      data: scoresHistory.value.map(s => s.ecoScore)
-    },
-    {
-      label: 'Pollution',
-      borderColor: '#f44336',
-      data: scoresHistory.value.map(s => s.pollution)
-    },
-    {
-      label: 'Urbanisation',
-      borderColor: '#ff9800',
-      data: scoresHistory.value.map(s => s.urbanisation)
-    },
-    {
-      label: 'Énergie',
-      borderColor: '#2196f3',
-      data: scoresHistory.value.map(s => s.énergie)
-    }
-  ]
-}))
+    gameStore.narration = data.narration;
+    currentChoices.value = data.choices;
+
+    // Générer image background selon narration + scores
+    const promptImage = `Paysage écologique, nature, ${gameStore.narration}, style artistique, lumière naturelle, haute résolution`;
+    backgroundImage.value = await generateBackgroundImage(promptImage);
+
+  } catch (e) {
+    alert("Erreur lors de la génération via OpenAI");
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
