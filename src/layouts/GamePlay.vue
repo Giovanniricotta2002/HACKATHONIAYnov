@@ -45,33 +45,44 @@
   </v-container>
 </template>
 
-<script setup>
-import { ref } from 'vue';
-import { generateNarrationAndChoices, generateBackgroundImage } from '../services/openaiService';
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import { gameStore } from '@/stores/gameStore';
+import { generateNarrationAndChoices, generateBackgroundImage } from '../services/openaiService';
+import { loadGameState } from '@/utils/loadGameState';
+import type { Choice, Scores } from '@/types/gameTypes';
 
-if (localStorage.getItem('gameState')) {
-  const savedState = JSON.parse(localStorage.getItem('gameState'));
-  gameStore.$patch(savedState);
+// Rechargement localStorage si partie existante
+const saved = localStorage.getItem('gameState');
+if (saved) {
+  const savedState = JSON.parse(saved);
+  Object.assign(gameStore, savedState);
 }
 
+// Refs
 const loading = ref(false);
-const currentChoices = ref([{ text: "Commencer le jeu", effects: {} }]);
+const currentChoices = ref<Choice[]>([]);
 const backgroundImage = ref('');
 const gameOver = ref(false);
 const gameOverMessage = ref("");
 
-async function makeChoice(choice) {
+// Fonction principale
+async function makeChoice(choice: Choice): Promise<void> {
   if (loading.value || gameOver.value) return;
   loading.value = true;
 
-  // Appliquer effets au score
-  for (const [k, v] of Object.entries(choice.effects)) {
-    gameStore.scores[k] = Math.min(100, Math.max(0, gameStore.scores[k] + v));
+  // Appliquer effets
+  if (choice.effects) {
+    for (const [k, v] of Object.entries(choice.effects) as [keyof Scores, number][]) {
+      gameStore.scores[k] = Math.min(100, Math.max(0, gameStore.scores[k] + v));
+    }
   }
-  gameStore.historiqueChoix.push(choice.text);
 
-  // Vérifier fin de partie
+  if (choice.text) {
+    gameStore.historiqueChoix.push(choice);
+  }
+
+  // Fin de partie ?
   if (Object.values(gameStore.scores).every(s => s >= 90)) {
     gameOverMessage.value = "🎉 Bravo, vous avez sauvé la planète !";
     gameOver.value = true;
@@ -86,7 +97,6 @@ async function makeChoice(choice) {
   }
 
   try {
-    // Générer narration & choix par GPT
     const data = await generateNarrationAndChoices({
       scores: gameStore.scores,
       historique: gameStore.historiqueChoix,
@@ -95,7 +105,6 @@ async function makeChoice(choice) {
     gameStore.narration = data.narration;
     currentChoices.value = data.choices;
 
-    // Générer image background selon narration + scores
     const promptImage = `Paysage écologique, nature, ${gameStore.narration}, style artistique, lumière naturelle, haute résolution`;
     backgroundImage.value = await generateBackgroundImage(promptImage);
 
@@ -106,4 +115,10 @@ async function makeChoice(choice) {
     loading.value = false;
   }
 }
+
+// Appel initial
+onMounted(async () => {
+  loadGameState()
+  await makeChoice({ text: '', effects: {} });
+});
 </script>
