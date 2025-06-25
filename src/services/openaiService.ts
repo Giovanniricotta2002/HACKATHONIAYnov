@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Assure-toi que .env est bien chargé
+  // apiKey: process.env.OPENAI_API_KEY, // Assure-toi que .env est bien chargé
   dangerouslyAllowBrowser: true,
 });
 

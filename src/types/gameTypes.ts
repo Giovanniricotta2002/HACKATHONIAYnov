@@ -49,4 +49,12 @@ interface Event {
   choices: Choice[]
 }
 
-export type { Scores, Choice, GameState, Scenario, GameContext, NarrationResponse, ScoreEvaluationCriteria, Event };
+type LayerCondition = {
+  key: keyof Scores;
+  thresholdHigh: number;
+  thresholdLow: number;
+  highImage?: string;
+  lowImage?: string;
+};
+
+export type { Scores, Choice, GameState, Scenario, GameContext, NarrationResponse, ScoreEvaluationCriteria, Event, LayerCondition };

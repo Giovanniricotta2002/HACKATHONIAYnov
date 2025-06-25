@@ -27,6 +27,8 @@ import { gameStore } from '@/stores/gameStore'
 import type { Scenario } from '@/types/gameTypes'
 import { useRouter } from 'vue-router'
 
+localStorage.clear()
+
 const router = useRouter()
 
 const scenarios: Scenario[] = [
