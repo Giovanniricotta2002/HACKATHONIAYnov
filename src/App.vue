@@ -1,10 +1,9 @@
 <template>
   <v-app>
-    <Game></Game>
+    <router-view />
   </v-app>
 </template>
 
 <script lang="ts" setup>
-import Game from './layouts/GamePlay.vue';
   //
 </script>

@@ -9,5 +9,5 @@ export const gameStore = reactive({
     energie: 50,
   },
   narration: "Bienvenue dans le jeu d'écologie, prenez vos premières décisions !",
-  historiqueChoix: [],
+  historiqueChoix: ["fefzfe"],
 });

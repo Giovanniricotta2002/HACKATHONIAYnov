@@ -50,6 +50,11 @@ import { ref } from 'vue';
 import { generateNarrationAndChoices, generateBackgroundImage } from '../services/openaiService';
 import { gameStore } from '@/stores/gameStore';
 
+if (localStorage.getItem('gameState')) {
+  const savedState = JSON.parse(localStorage.getItem('gameState'));
+  gameStore.$patch(savedState);
+}
+
 const loading = ref(false);
 const currentChoices = ref([{ text: "Commencer le jeu", effects: {} }]);
 const backgroundImage = ref('');
