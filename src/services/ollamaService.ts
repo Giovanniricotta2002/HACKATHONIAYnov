@@ -3,18 +3,47 @@ const MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'llama3';
 
 export async function generateNarrationAndChoices(context: any, userChoice: any) {
     const prompt = `
-    Seed/thème : ${context.theme}
-    Score actuel : ${JSON.stringify(context.scores)}
-    Historique : ${context.historique.join(' | ')}
-    Dernier choix : ${userChoice}
+    Tu es un moteur narratif interactif pour un jeu de gestion où le joueur incarne le nouveau maire d'une ville.
 
-    Génère la suite de l’histoire sous forme JSON avec narration et 2 à 3 choix :
+    Contexte du joueur :
+    - Thème principal : ${context.theme}
+    - Scores actuels de la ville (ex. pollution, budget, sécurité, écoScore, etc.) : ${JSON.stringify(context.scores)}
+    - Historique des événements et décisions municipales : ${context.historique.join(' | ')}
+    - Dernière décision prise par le maire : ${userChoice}
+
+    Ta tâche :
+    1. Génère la suite logique de l’histoire municipale sous forme d'une **narration immersive, crédible et engageante**, en tenant compte du rôle du joueur comme **maire de la ville**.
+    2. Il y a une **probabilité modérée (30 à 40 %)** qu’un événement imprévu survienne dans la narration (par exemple : une météorite, une panne électrique, une rupture de canalisation, une cyberattaque, un glissement de terrain, etc.). L’événement doit rester **plausible dans le ton et le contexte**, mais apporter une tension ou un imprévu dans la gestion municipale.
+    3. Propose ensuite **2 à 3 choix de décisions politiques ou administratives** que le maire pourrait prendre pour gérer la situation.
+
+    Chaque choix doit inclure :
+    - Un champ "text" décrivant clairement l’action proposée
+    - Un objet "effects" listant les **impacts chiffrés** sur les scores de la ville (ex : {"pollution": -10, "budget": -5})
+
+    Contraintes :
+    - Le ton doit rester **professionnel**, avec une touche narrative et stratégique.
+    - La narration doit être rédigée **en français**.
+    - La réponse doit être **strictement** un objet JSON **valide**, sans texte supplémentaire, sans explication, sans balises Markdown.
+
+    Réponds uniquement sous le format suivant :
+
     {
-        "narration": "Un orage toxique s'approche...",
-        "choices": [
-            {"text": "Activer les filtres d'air", "effects": {"pollution": -10}},
-            {"text": "Fermer les écoles", "effects": {"ecoScore": 5}}
-        ]
+    "narration": "Texte immersif ici, décrivant la situation municipale...",
+    "choices": [
+        {
+        "text": "Texte du choix 1 (ex. Lancer une campagne de sensibilisation)",
+        "effects": {
+            "score1": valeur,
+            "score2": valeur
+        }
+        },
+        {
+        "text": "Texte du choix 2",
+        "effects": {
+            ...
+        }
+        }
+    ]
     }
     `
     console.log(prompt);
