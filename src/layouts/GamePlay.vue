@@ -46,79 +46,108 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watchEffect } from 'vue';
 import { gameStore } from '@/stores/gameStore';
-import { generateNarrationAndChoices, generateBackgroundImage } from '../services/openaiService';
+import { generateNarrationAndChoices } from '@/services/openaiService';
+import { generateImageFromContext } from '@/services/imageGenService';
 import { loadGameState } from '@/utils/loadGameState';
 import type { Choice, Scores } from '@/types/gameTypes';
+import { checkGameOverStatus } from '@/utils/checkGameOverStatus';
 
-// Rechargement localStorage si partie existante
-const saved = localStorage.getItem('gameState');
-if (saved) {
-  const savedState = JSON.parse(saved);
-  Object.assign(gameStore, savedState);
-}
-
-// Refs
+// === Refs et états ===
 const loading = ref(false);
 const currentChoices = ref<Choice[]>([]);
 const backgroundImage = ref('');
 const gameOver = ref(false);
 const gameOverMessage = ref("");
 
-// Fonction principale
+// === Rechargement localStorage si partie existante ===
+const saved = localStorage.getItem('gameState');
+if (saved) {
+  try {
+    const savedState = JSON.parse(saved);
+    Object.assign(gameStore, savedState);
+  } catch (e) {
+    console.warn("Échec chargement partie sauvegardée :", e);
+  }
+}
+
+// === Fonction : Appliquer un choix ===
 async function makeChoice(choice: Choice): Promise<void> {
   if (loading.value || gameOver.value) return;
   loading.value = true;
 
-  // Appliquer effets
+  // Appliquer les effets du choix
   if (choice.effects) {
-    for (const [k, v] of Object.entries(choice.effects) as [keyof Scores, number][]) {
-      gameStore.scores[k] = Math.min(100, Math.max(0, gameStore.scores[k] + v));
+    for (const [key, value] of Object.entries(choice.effects)) {
+      // Sécurise le typage avec keyof Scores
+      const k = key as keyof Scores;
+      const current = gameStore.scores[k] ?? 50; // fallback si valeur absente
+      const newValue = Math.max(0, Math.min(100, current + (value ?? 0)));
+      gameStore.scores[k] = newValue;
     }
   }
 
+  // Ajouter le choix à l'historique
   if (choice.text) {
     gameStore.historiqueChoix.push(choice);
   }
 
-  // Fin de partie ?
-  if (Object.values(gameStore.scores).every(s => s >= 90)) {
-    gameOverMessage.value = "🎉 Bravo, vous avez sauvé la planète !";
-    gameOver.value = true;
-    loading.value = false;
-    return;
-  }
-  if (Object.values(gameStore.scores).some(s => s <= 10)) {
-    gameOverMessage.value = "⚠️ Votre gestion a mené à une catastrophe écologique...";
+  // Vérifier conditions de fin de partie
+  const result = checkGameOverStatus(gameStore.scores);
+  if (result) {
+    gameOverMessage.value = result;
     gameOver.value = true;
     loading.value = false;
     return;
   }
 
+  // Génération de la narration et des nouveaux choix
   try {
-    const data = await generateNarrationAndChoices({
-      scores: gameStore.scores,
-      historique: gameStore.historiqueChoix,
-    }, choice.text);
+    const response = await generateNarrationAndChoices(
+      {
+        scores: gameStore.scores,
+        historique: gameStore.historiqueChoix,
+        theme: gameStore.theme,
+      },
+      choice.text
+    );
 
-    gameStore.narration = data.narration;
-    currentChoices.value = data.choices;
+    gameStore.narration = response.narration;
+    currentChoices.value = response.choices;
 
-    const promptImage = `Paysage écologique, nature, ${gameStore.narration}, style artistique, lumière naturelle, haute résolution`;
-    backgroundImage.value = await generateBackgroundImage(promptImage);
+    // ✅ Génération d’image via les scores et la narration
+    backgroundImage.value = await generateImageFromContext(
+      gameStore.narration,
+      { scores: gameStore.scores }
+    );
 
-  } catch (e) {
-    alert("Erreur lors de la génération via OpenAI");
-    console.error(e);
+  } catch (error) {
+    console.error("Erreur lors de la génération via OpenAI :", error);
+    alert("Une erreur est survenue. Veuillez réessayer.");
   } finally {
     loading.value = false;
   }
 }
 
-// Appel initial
+// === Initialisation à l'ouverture ===
 onMounted(async () => {
-  loadGameState()
-  await makeChoice({ text: '', effects: {} });
+  loadGameState(); // recharge éventuellement depuis localStorage (si besoin)
+  await makeChoice({ text: '', effects: {} }); // déclenche le premier tour
+});
+
+// 🔁 Sauvegarde automatique dans localStorage
+watchEffect(() => {
+  if (gameStore.scores && gameStore.theme) {
+    const snapshot = JSON.stringify({
+      scores: gameStore.scores,
+      narration: gameStore.narration,
+      historiqueChoix: gameStore.historiqueChoix,
+      theme: gameStore.theme,
+      scoresHistory: gameStore.scoresHistory,
+      description: gameStore.description,
+    });
+    localStorage.setItem('gameState', snapshot);
+  }
 });
 </script>
